@@ -4,11 +4,11 @@
 
 library("readxl")
 library("ggplot2")
-library(ggpubr)
+library("ggpubr")
 theme_set(theme_pubr())
 library("plotly")
 library("psych")
-library("dplyr2")
+library("dplyr")
 library("lubridate")
 library("plotKML")
 library("ggmap")
@@ -22,6 +22,16 @@ dat <- as.data.frame(dat)
 
 # Amount of articles, n=472
 nrow(dat) 
+
+# Distribution of relevance ratings for all n=1’324 included scientific articles
+plot_relevance_rating <- ggplot(dat, aes(mean_rating_relevance, fill=as.factor(Relevant))) +
+                                geom_histogram(position='dodge') +
+                                labs(y= "Amount", x = "GPT-4 relevance rating") +
+                                scale_y_continuous(limits = c(0, 8)) +
+                                theme(legend.title=element_blank()) +
+                                labs(color = "sale year")
+
+plot_relevance_rating <- plot_relevance_rating + scale_fill_discrete(name = "Expert relevance rating")
 
 # Article types (0-2)
 table_article_types <- table(dat$article.type)
@@ -132,46 +142,46 @@ max(dat$p3_cos_similarity)
 # Expert & GPT-4 paragraph categorizations
 
 # Expert & paragraph 1
-cohen.kappa(x=cbind(dat$expert1_categorization, dat$p1_rating_category))
+cohen.kappa(x=cbind(dat$expert_categorization, dat$p1_rating_category))
 
 # Expert & paragraph 2
-cohen.kappa(x=cbind(dat$expert1_categorization, dat$p2_rating_category))
+cohen.kappa(x=cbind(dat$expert_categorization, dat$p2_rating_category))
 
 # Expert & paragraph 3
-cohen.kappa(x=cbind(dat$expert1_categorization, dat$p3_rating_category))
+cohen.kappa(x=cbind(dat$expert_categorization, dat$p3_rating_category))
 
 # Expert & paragraph mean rating
-cohen.kappa(x=cbind(dat$expert1_categorization, dat$p_mean_rating))
+cohen.kappa(x=cbind(dat$expert_categorization, dat$p_average_categorization_rounded))
 
 # Expert & GPT-4 abstract categorizations
-cohen.kappa(x=cbind(dat$expert1_categorization, dat$abstract_rating_category_mean))
+cohen.kappa(x=cbind(dat$expert_categorization, dat$abstract_rating_category_average_rounded))
 
 # GPT-4 abstract & paragraph categorizations
-cohen.kappa(x=cbind(dat$abstract_rating_category_mean, dat$p_mean_rating))
+cohen.kappa(x=cbind(dat$abstract_rating_category_average, dat$p_average_categorization_rounded))
 
 # Timeline, expert categorization of articles by years
 dat_excel <- read_excel("MA_Data_Knowledge_Accumulation.xlsx")
 
-# Tranform date
+# Transform date
 date_as_date <- as.Date(as.POSIXct(dat_excel$date, "CST"))
 date_year <- format(date_as_date, "%Y")
 
 # Create data frames for each year with categorizations
 cat0_by_year <- dat_excel %>% 
                   group_by(year = lubridate::floor_date(date, "year")) %>%
-                  summarize(summary_variable = sum(expert1_categorization == 0))
+                  summarize(summary_variable = sum(expert_categorization == 0))
 
 cat1_by_year <- dat_excel %>% 
                   group_by(year = lubridate::floor_date(date, "year")) %>%
-                  summarize(summary_variable = sum(expert1_categorization == 1))
+                  summarize(summary_variable = sum(expert_categorization == 1))
 
 cat2_by_year <- dat_excel %>% 
                   group_by(year = lubridate::floor_date(date, "year")) %>%
-                  summarize(summary_variable = sum(expert1_categorization == 2))
+                  summarize(summary_variable = sum(expert_categorization == 2))
 
 cat3_by_year <- dat_excel %>% 
                   group_by(year = lubridate::floor_date(date, "year")) %>%
-                  summarize(summary_variable = sum(expert1_categorization == 3))
+                  summarize(summary_variable = sum(expert_categorization == 3))
 
 # Plot timeline
 plot_timeline_articles <- data.frame(Year = cat0_by_year$year, 
@@ -180,8 +190,8 @@ plot_timeline_articles <- data.frame(Year = cat0_by_year$year,
                                     cat2_by_year$summary_variable,
                                     cat3_by_year$summary_variable),
                           Type = c(rep("Ambiguous", length(cat0_by_year$year)), 
-                                   rep("Against", length(cat0_by_year$year)), 
                                    rep("Support", length(cat0_by_year$year)), 
+                                   rep("Against", length(cat0_by_year$year)), 
                                    rep("Tacit acceptance", length(cat0_by_year$year))))
 
 ggplot(plot_timeline_articles) + 
@@ -194,22 +204,91 @@ ggplot(plot_timeline_articles) +
 
 ggplot(plot_timeline_articles) + 
   geom_line(aes(Year, Amount, colour = Type)) +
-  gghighlight(Type == "Against") +
-  scale_color_manual(values=c('Red'))
+  gghighlight(Type == "Support") +
+  scale_color_manual(values=c('Blue'))
 
 ggplot(plot_timeline_articles) + 
   geom_line(aes(Year, Amount, colour = Type)) +
-  gghighlight(Type == "Support") +
-  scale_color_manual(values=c('Blue'))
+  gghighlight(Type == "Against") +
+  scale_color_manual(values=c('Red'))
 
 ggplot(plot_timeline_articles) + 
   geom_line(aes(Year, Amount, colour = Type)) +
   gghighlight(Type == "Tacit acceptance") +
   scale_color_manual(values=c('purple'))
 
+# Create data frames for every five years with categorizations
+cat0_by_5years <- dat_excel %>% 
+  group_by(year = lubridate::floor_date(date, "5 years")) %>%
+  summarize(article_count = sum(expert_categorization == 0))
+
+cat1_by_5years <- dat_excel %>% 
+  group_by(year = lubridate::floor_date(date, "5 years")) %>%
+  summarize(article_count = sum(expert_categorization == 1))
+
+cat2_by_5years <- dat_excel %>% 
+  group_by(year = lubridate::floor_date(date, "5 years")) %>%
+  summarize(article_count = sum(expert_categorization == 2))
+
+cat3_by_5years <- dat_excel %>% 
+  group_by(year = lubridate::floor_date(date, "5 years")) %>%
+  summarize(article_count = sum(expert_categorization == 3))
+
+cat_all_by_5years <- cat0_by_5years
+cat_all_by_5years$article_count <- cat0_by_5years$article_count + cat1_by_5years$article_count + cat2_by_5years$article_count + cat3_by_5years$article_count
+
+std_cat0_by_5years <- cat0_by_5years
+std_cat0_by_5years$article_count <- ifelse(cat_all_by_5years$article_count==0, NA, cat0_by_5years$article_count/cat_all_by_5years$article_count)
+
+std_cat1_by_5years <- cat0_by_5years
+std_cat1_by_5years$article_count <- ifelse(cat_all_by_5years$article_count==0, NA, cat1_by_5years$article_count/cat_all_by_5years$article_count)
+
+std_cat2_by_5years <- cat0_by_5years
+std_cat2_by_5years$article_count <- ifelse(cat_all_by_5years$article_count==0, NA, cat2_by_5years$article_count/cat_all_by_5years$article_count)
+
+std_cat3_by_5years <- cat0_by_5years
+std_cat3_by_5years$article_count <- ifelse(cat_all_by_5years$article_count==0, NA, cat3_by_5years$article_count/cat_all_by_5years$article_count)
+
+# Plot timeline in 5-year steps
+plot_timeline_articles_5years <- data.frame(Year = as.Date(std_cat0_by_5years$year), 
+                                     Proportion = c(std_cat0_by_5years$article_count,
+                                                    std_cat1_by_5years$article_count,
+                                                    std_cat2_by_5years$article_count,
+                                                    std_cat3_by_5years$article_count),
+                                     Type = c(rep("Ambiguous", length(std_cat0_by_5years$year)), 
+                                              rep("Support", length(std_cat0_by_5years$year)), 
+                                              rep("Against", length(std_cat0_by_5years$year)), 
+                                              rep("Tacit acceptance", length(std_cat0_by_5years$year))))
+        
+ggplot(plot_timeline_articles_5years) + 
+  geom_line(aes(Year, Proportion, colour = Type)) +
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y", limits = c(as.Date("1955-1-1"), as.Date("2020-1-1")))
+
+ggplot(plot_timeline_articles_5years) + 
+  geom_line(aes(Year, Proportion, colour = Type)) +
+  gghighlight(Type == "Ambiguous") +
+  scale_color_manual(values=c('Green')) +
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y", limits = c(as.Date("1955-1-1"), as.Date("2020-1-1")))
+
+ggplot(plot_timeline_articles_5years) + 
+  geom_line(aes(Year, Proportion, colour = Type)) +
+  gghighlight(Type == "Against") +
+  scale_color_manual(values=c('Red')) +
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y", limits = c(as.Date("1955-1-1"), as.Date("2020-1-1")))
+
+ggplot(plot_timeline_articles_5years) + 
+  geom_line(aes(Year, Proportion, colour = Type)) +
+  gghighlight(Type == "Support") +
+  scale_color_manual(values=c('Blue')) +
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y", limits = c(as.Date("1955-1-1"), as.Date("2020-1-1")))
+
+ggplot(plot_timeline_articles_5years) + 
+  geom_line(aes(Year, Proportion, colour = Type)) +
+  gghighlight(Type == "Tacit acceptance") +
+  scale_color_manual(values=c('purple')) +
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y", limits = c(as.Date("1955-1-1"), as.Date("2020-1-1")))
+
 # Divide GPS data into lat, lon
 dat_excelgps_coordinates <- dat_excel %>%
                     filter(`first author university coordinates (Latitude, Longitude)` != '0,0') %>%
                     separate(`first author university coordinates (Latitude, Longitude)`, into = c('lat', 'lon'), sep=",")
-
-
